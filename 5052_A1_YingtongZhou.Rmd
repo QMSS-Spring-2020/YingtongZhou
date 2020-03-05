@@ -1,0 +1,162 @@
+---
+title: "5052_A1"
+author: "Yingtong Zhou"
+date: "2/13/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/Desktop/QMSS - CU/Spring 2020/GR5052_Practicum")
+```
+
+```{r, message=FALSE, warning=FALSE, cache=TRUE}
+com_sample <- read.csv("~/Desktop/QMSS - CU/Spring 2020/GR5052_Practicum/complaints_sample.csv", 
+                       comment.char="#")
+library(ggplot2)
+library(dplyr)
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+```
+
+# Bar Charts
+```{r, message=FALSE, warning=FALSE, cache=TRUE}
+#unique(com_sample$Product)
+
+com_product <- com_sample %>% 
+  group_by(Product) %>% 
+  summarize(cnt = n()) %>% 
+  arrange(desc(cnt))
+
+
+#levels(com_product$Product) <- gsub(",", ",\n", levels(com_product$Product))
+
+gg_product <- ggplot(com_product, aes(x = reorder(Product, -cnt), y = cnt)) +
+  geom_bar(stat = "identity") +
+  scale_y_discrete(expand = c(0, 50)) +
+  theme(axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10)) +
+  geom_text(aes(label = cnt), 
+            hjust = -0.25, 
+            vjust = 0.5) +
+  ylim(0, 300) +
+  coord_flip()
+  
+
+gg_product
+```
+
+I randomly subset 1000 complaints from the original dataset. The above graph reflects the total number of complaints in each product.The most frequently complained product in this sample is related to "Credit reporting, credit repair services, or "other personal consumer reports," which accounts for about 1/5 of the total complaints. Complaints concerning "Mortage" and "Debt collection" are very prevalent as well. The top three complaints total over 60% of the overall complaints. 
+On the contrary, the three least complained products are "Other financial service", "Prepaid card" and "Money transfers" that only account for less than 1% of the total complaints.
+The unequal distribution of complaints might be caused by the varying frequency of use of these products. It would be a good idea for companies to focus more on these products that are frequently comlained like streamlining the complaint-handling process and upgrade these products based on consumer feedbacks to avoid these complaints in the first place.
+
+```{r, message=FALSE, warning=FALSE, cache=TRUE}
+com_proti <- com_sample %>% 
+  group_by(Product, Timely.response.) %>% 
+  summarize(cnt = n())
+
+gg_proti <- ggplot(com_proti, aes(x = reorder(Product, -cnt), y = cnt, fill = Timely.response.)) +
+  geom_bar(stat = "identity",position = "dodge") +
+  geom_text(aes(label = cnt), 
+            hjust = -0.75, 
+            vjust = 0.5,
+            position = position_dodge(width = 1),
+            size = 3) +
+  coord_flip() +
+  ylim(0, 300) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(size = 9))
+
+gg_proti
+```
+The above chart shows the distribution of the "Timely.response." among products. Most of the complaints received timely response but complaints regarding "Debt collection" have slightly higher rates of untimely response, which should be addressed to improve future service.
+
+```{r, message=FALSE, warning=FALSE, cache=TRUE}
+#unique(com_sample$Company.response.to.consumer)
+
+com_res <- com_sample %>% 
+  group_by(Company.response.to.consumer) %>% 
+  summarize(cnt = n()) %>% 
+  arrange(desc(cnt))
+
+gg_res <- ggplot(com_res, aes(x = reorder(Company.response.to.consumer, -cnt), y = cnt)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = cnt), 
+            hjust = -0.25, 
+            vjust = 0.5) +
+  coord_flip() +
+  ylim(0, 850)
+  
+
+gg_res
+```
+
+Based on the graph regarding companies' response to complaints, complaints were "Closed with explanation" for 77% of the time and about 15% were "Closed with non-monetary relief." Very few cases were categorized as "Untimely response." However, I doubt the validity of such categorization of "Untimely response," which might be underestimated.
+The category of "Closed with explanation" is too broad and might fail to account for more subtle aspects of the complaints, which are closely related to customer satisfaction. Complaints might be closed but the customers might have negative experience with these products.
+Besides, the "Closed" category is very vague. It does not give any explanation on how the complaints were settled while this group of customers could have be angry or more information might be hidden.
+
+```{r, message=FALSE, warning=FALSE, cache=TRUE}
+#unique(com_sample$Issue)
+
+com_iss <- com_sample %>% 
+  group_by(Issue) %>% 
+  summarize(cnt = n()) %>% 
+  arrange(desc(cnt)) %>% 
+  filter(cnt > 19)
+
+gg_iss <- ggplot(com_iss, aes(x = reorder(Issue, -cnt), y = cnt)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = cnt), 
+            hjust = -0.25, 
+            vjust = 0.5) +
+  coord_flip() +
+  ylim(0, 200)
+  
+
+gg_iss
+```
+
+Based on the above information, I learnt that there are over 100 different issues related to the complaints and they are pretty diversely distributed. The bar chart shows the top ten issues complained. Complaints concerning incorrect information on report and credit card report are most prevalent. This is also relatively easy to solve if there is a system that better collects, records and verifies the information before presenting it to customers. It would be helpful if it would be interactive for the customers so that they are better informed and served. More effective approach or system should be incorporated so that the collection of information would be correct in the first place.
+
+# Word Cloud
+```{r, message=FALSE, warning=FALSE, cache=TRUE}
+nar_sam <- readLines("~/Desktop/QMSS - CU/Spring 2020/GR5052_Practicum/nar_sam.txt")
+
+ns <- Corpus(VectorSource(nar_sam))
+#inspect(ns)
+
+toSpace <- content_transformer(function (x , pattern) gsub(pattern, " ", x))
+ns <- tm_map(ns, toSpace, "/")
+ns <- tm_map(ns, toSpace, "@")
+ns <- tm_map(ns, toSpace, "\\|")
+ns <- tm_map(ns, toSpace, "XXXX")
+
+docs <- tm_map(ns, content_transformer(tolower))
+docs <- tm_map(docs, removeNumbers)
+docs <- tm_map(docs, removeWords, stopwords("english"))
+docs <- tm_map(docs, removePunctuation)
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, stemDocument)
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 50,
+          max.words = 200, random.order = FALSE, rot.per = 0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+freq100t <- findFreqTerms(dtm, lowfreq = 100)
+
+findAssocs(dtm, terms = "credit", corlimit = 0.3)
+findAssocs(dtm, terms = "account", corlimit = 0.3)
+```
+
+The wordcloud is generated from the customer narratives. The most frequent words are "credit," "account," "payment," and "report." They are consistent with the issue and product types of the complaints. The "findAssocs" function shows the terms that are often associated with the two most popular narrative terms. Among the associated terms of "credit," "experian" has a relatively high occurrence probably due to its numerous services related to credit.

@@ -1,0 +1,8 @@
+base
+ggplot2
+dplyr
+NLP
+tm
+SnowballC
+RColorBrewer
+wordcloud
